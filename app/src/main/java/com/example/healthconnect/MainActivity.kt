@@ -11,17 +11,31 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.health.connect.client.HealthConnectClient
+import androidx.health.connect.client.HealthConnectFeatures
 import com.example.healthconnect.ui.theme.HealthConnectTheme
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        val healthConnectClient = HealthConnectClient.getOrCreate(this)
+
+        val isBackgroundReadAvailable =
+            healthConnectClient.features.getFeatureStatus(
+                HealthConnectFeatures.FEATURE_READ_HEALTH_DATA_IN_BACKGROUND
+            ) == HealthConnectFeatures.FEATURE_STATUS_AVAILABLE
+
         enableEdgeToEdge()
         setContent {
             HealthConnectTheme {
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
                     Greeting(
-                        name = "Android",
+                        name = if (isBackgroundReadAvailable) {
+                            "Background read AVAILABLE"
+                        } else {
+                            "Background read NOT available"
+                        },
                         modifier = Modifier.padding(innerPadding)
                     )
                 }
