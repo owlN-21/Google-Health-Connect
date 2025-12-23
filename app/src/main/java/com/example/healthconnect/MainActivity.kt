@@ -1,5 +1,7 @@
 package com.example.healthconnect
 
+import android.content.Intent
+import android.net.Uri
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -15,17 +17,23 @@ import androidx.health.connect.client.HealthConnectClient
 import androidx.health.connect.client.HealthConnectFeatures
 import com.example.healthconnect.ui.theme.HealthConnectTheme
 
+private const val HEALTH_CONNECT_PACKAGE =
+    "com.google.android.apps.healthdata"
+
 class MainActivity : ComponentActivity() {
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        val healthConnectClient = HealthConnectClient.getOrCreate(this)
+        // Получаем HealthConnectClient или выходим
+        val healthConnectClient = getHealthConnectClient() ?: return
 
+        // Проверяем доступность фичи background read
         val isBackgroundReadAvailable =
             healthConnectClient.features.getFeatureStatus(
                 HealthConnectFeatures.FEATURE_READ_HEALTH_DATA_IN_BACKGROUND
             ) == HealthConnectFeatures.FEATURE_STATUS_AVAILABLE
-
+        
         enableEdgeToEdge()
         setContent {
             HealthConnectTheme {
@@ -41,6 +49,38 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
+    }
+
+    /**
+     * Проверяет доступность Health Connect и
+     * возвращает HealthConnectClient или null
+     */
+    private fun getHealthConnectClient(): HealthConnectClient? {
+        val availabilityStatus =
+            HealthConnectClient.getSdkStatus(this, HEALTH_CONNECT_PACKAGE)
+
+        if (availabilityStatus == HealthConnectClient.SDK_UNAVAILABLE) {
+            return null
+        }
+
+        if (availabilityStatus ==
+            HealthConnectClient.SDK_UNAVAILABLE_PROVIDER_UPDATE_REQUIRED
+        ) {
+            val uriString =
+                "market://details?id=$HEALTH_CONNECT_PACKAGE&url=healthconnect%3A%2F%2Fonboarding"
+
+            startActivity(
+                Intent(Intent.ACTION_VIEW).apply {
+                    setPackage("com.android.vending")
+                    data = Uri.parse(uriString)
+                    putExtra("overlay", true)
+                    putExtra("callerId", packageName)
+                }
+            )
+            return null
+        }
+
+        return HealthConnectClient.getOrCreate(this)
     }
 }
 
