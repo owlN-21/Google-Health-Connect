@@ -3,6 +3,7 @@ package com.example.healthconnect
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
+import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -20,9 +21,19 @@ import androidx.health.connect.client.PermissionController
 import androidx.health.connect.client.permission.HealthPermission
 import androidx.health.connect.client.records.HeartRateRecord
 import androidx.health.connect.client.records.StepsRecord
+import androidx.health.connect.client.records.metadata.Device
 import androidx.lifecycle.lifecycleScope
 import com.example.healthconnect.ui.theme.HealthConnectTheme
 import kotlinx.coroutines.launch
+import java.time.Duration
+import java.time.Instant
+import java.time.ZoneOffset
+
+import androidx.health.connect.client.records.metadata.Metadata
+import androidx.health.connect.client.request.AggregateRequest
+import androidx.health.connect.client.request.ReadRecordsRequest
+import androidx.health.connect.client.time.TimeRangeFilter
+
 
 private const val HEALTH_CONNECT_PACKAGE =
     "com.google.android.apps.healthdata"
@@ -68,6 +79,23 @@ class MainActivity : ComponentActivity() {
             if (!grantedPermissions.containsAll(HEALTH_CONNECT_PERMISSIONS)) {
                 // Запрашиваем permissions
                 requestPermissionsLauncher.launch(HEALTH_CONNECT_PERMISSIONS)
+            }else{
+                insertSteps(healthConnectClient)
+
+                val endTime = Instant.now()
+                val startTime = endTime.minus(Duration.ofHours(1))
+
+                aggregateSteps(
+                    healthConnectClient = healthConnectClient,
+                    startTime = startTime,
+                    endTime = endTime
+                )
+
+                readHeartRateByTimeRange(
+                    healthConnectClient = healthConnectClient,
+                    startTime = startTime,
+                    endTime = endTime
+                )
             }
         }
 
@@ -131,6 +159,88 @@ class MainActivity : ComponentActivity() {
 
         return HealthConnectClient.getOrCreate(this)
     }
+
+    suspend fun insertSteps(healthConnectClient: HealthConnectClient) {
+        val endTime = Instant.now()
+        val startTime = endTime.minus(Duration.ofMinutes(15))
+        try {
+            val stepsRecord = StepsRecord(
+                count = 120,
+                startTime = startTime,
+                endTime = endTime,
+                startZoneOffset = ZoneOffset.UTC,
+                endZoneOffset = ZoneOffset.UTC,
+                metadata = Metadata.autoRecorded(
+                    device = Device(type = Device.TYPE_WATCH)
+                ),
+            )
+            healthConnectClient.insertRecords(listOf(stepsRecord))
+        } catch (e: Exception) {
+            Log.e(
+                "HealthConnect",
+                "Error inserting steps",
+                e
+            )
+        }
+
+    }
+
+    suspend fun readHeartRateByTimeRange(
+        healthConnectClient: HealthConnectClient,
+        startTime: Instant,
+        endTime: Instant
+    ) {
+        try {
+            val response = healthConnectClient.readRecords(
+                ReadRecordsRequest(
+                    HeartRateRecord::class,
+                    timeRangeFilter = TimeRangeFilter.between(startTime, endTime)
+                )
+            )
+
+            Log.d(
+                "HealthConnect",
+                "Heart rate records count = ${response.records.size}"
+            )
+
+            for (record in response.records) {
+                Log.d(
+                    "HealthConnect",
+                    "HeartRate: start=${record.startTime}, end=${record.endTime}, samples=${record.samples}"
+                )
+            }
+        } catch (e: Exception) {
+            Log.e("HealthConnect", "Error reading heart rate", e)
+        }
+    }
+
+
+    suspend fun aggregateSteps(
+        healthConnectClient: HealthConnectClient,
+        startTime: Instant,
+        endTime: Instant
+    ) {
+        try {
+            val response = healthConnectClient.aggregate(
+                AggregateRequest(
+                    metrics = setOf(StepsRecord.COUNT_TOTAL),
+                    timeRangeFilter = TimeRangeFilter.between(startTime, endTime)
+                )
+            )
+            // The result may be null if no data is available in the time range
+            val stepCount = response[StepsRecord.COUNT_TOTAL]
+            Log.d(
+                "HealthConnect",
+                "Aggregated steps from $startTime to $endTime = $stepCount"
+            )
+        } catch (e: Exception) {
+            // Run error handling here
+            Log.e("HealthConnect", "Error aggregating steps", e)
+        }
+    }
+
+
+
 }
 
 @Composable
