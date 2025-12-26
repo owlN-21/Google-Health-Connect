@@ -21,6 +21,8 @@ import androidx.health.connect.client.records.HeartRateRecord
 import androidx.health.connect.client.records.SleepSessionRecord
 import androidx.health.connect.client.records.StepsRecord
 import androidx.lifecycle.lifecycleScope
+import androidx.navigation.compose.rememberNavController
+import com.example.healthconnect.navigation.AppNavGraph
 import com.example.healthconnect.ui.theme.HealthConnectTheme
 import kotlinx.coroutines.launch
 import java.time.Duration
@@ -66,23 +68,33 @@ class MainActivity : ComponentActivity() {
         setContent {
             HealthConnectTheme {
 
-                // создаём ViewModel
-                val viewModel = remember {
-                    HealthScreenViewModel(healthManager)
-                }
+//                // создаём ViewModel
+//                val viewModel = remember {
+//                    HealthScreenViewModel(healthManager)
+//                }
 
-                Scaffold(modifier = Modifier.fillMaxSize()) { padding ->
-                    HealthScreen(
-                        steps = viewModel.stepsText,
-                        heartRateCount = viewModel.heartRateText,
-                        sleepTime = viewModel.sleepTimeText,
-                        error = viewModel.errorText,
-                        selectedDate = viewModel.selectedDate,
-                        onPrevDay = viewModel::prevDay,
-                        onNextDay = viewModel::nextDay,
-                        modifier = Modifier.padding(padding)
-                    )
-                }
+                val navController = rememberNavController()
+
+                AppNavGraph(
+                    navController = navController,
+                    healthManager = healthManager
+                )
+
+//                Scaffold(modifier = Modifier.fillMaxSize()) { padding ->
+//                    HealthScreen(
+//                        steps = viewModel.stepsText,
+//                        heartRateCount = viewModel.heartRateText,
+//                        sleepTime = viewModel.sleepTimeText,
+//                        error = viewModel.errorText,
+//                        selectedDate = viewModel.selectedDate,
+//                        onPrevDay = viewModel::prevDay,
+//                        onNextDay = viewModel::nextDay,
+//                        onEditClick = {
+//                            navController.navigate("edit")
+//                        },
+//                        modifier = Modifier.padding(padding)
+//                    )
+//                }
             }
         }
 

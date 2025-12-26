@@ -13,12 +13,15 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.ArrowForward
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -36,82 +39,97 @@ fun HealthScreen(
     selectedDate: LocalDate,
     onPrevDay: () -> Unit,
     onNextDay: () -> Unit,
+    onEditClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    Column(
-        modifier = modifier
-            .padding(16.dp)
-            .fillMaxSize(),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
-    ) {
-
-        // Заголовок
-        Text(
-            text = "Health data",
-            style = MaterialTheme.typography.headlineMedium
-        )
-
-        // Навигация по дате
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween,
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            IconButton(onClick = onPrevDay) {
-                Icon(
-                    imageVector = Icons.Filled.ArrowBack,
-                    contentDescription = "Previous day"
-                )
-            }
-
-
-            Text(
-                text = selectedDate.toString(),
-                style = MaterialTheme.typography.titleMedium
-            )
-
-            IconButton(onClick = onNextDay) {
-                Icon(
-                    imageVector = Icons.Filled.ArrowForward,
-                    contentDescription = "Next day"
-                )
-            }
-
-        }
-
-        if (error != null) {
-            Card(
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.errorContainer
-                )
+    Scaffold(
+        floatingActionButton = {
+            FloatingActionButton(
+                onClick = onEditClick,
+                shape = MaterialTheme.shapes.medium
             ) {
-                Text(
-                    text = error,
-                    color = MaterialTheme.colorScheme.onErrorContainer,
-                    modifier = Modifier.padding(16.dp)
+                Icon(
+                    imageVector = Icons.Default.Edit,
+                    contentDescription = "Edit health data"
                 )
             }
-            return
         }
+    ) { innerPadding ->
+            Column(
+                modifier = modifier
+                    .padding(innerPadding)
+                    .padding(16.dp)
+                    .fillMaxSize(),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
 
-        // Карточки данных
-        HealthDataCard(
-            title = "Steps",
-            value = steps,
-            unit = "steps"
-        )
+                // Заголовок
+                Text(
+                    text = "Health data",
+                    style = MaterialTheme.typography.headlineMedium
+                )
 
-        HealthDataCard(
-            title = "Heart rate",
-            value = heartRateCount,
-            unit = "bpm"
-        )
+                // Навигация по дате
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    IconButton(onClick = onPrevDay) {
+                        Icon(
+                            imageVector = Icons.Filled.ArrowBack,
+                            contentDescription = "Previous day"
+                        )
+                    }
 
-        HealthDataCard(
-            title = "Sleep",
-            value = sleepTime,
-            unit = ""
-        )
+
+                    Text(
+                        text = selectedDate.toString(),
+                        style = MaterialTheme.typography.titleMedium
+                    )
+
+                    IconButton(onClick = onNextDay) {
+                        Icon(
+                            imageVector = Icons.Filled.ArrowForward,
+                            contentDescription = "Next day"
+                        )
+                    }
+
+                }
+
+                if (error != null) {
+                    Card(
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.errorContainer
+                        )
+                    ) {
+                        Text(
+                            text = error,
+                            color = MaterialTheme.colorScheme.onErrorContainer,
+                            modifier = Modifier.padding(16.dp)
+                        )
+                    }
+                }
+
+                // Карточки данных
+                HealthDataCard(
+                    title = "Steps",
+                    value = steps,
+                    unit = "steps"
+                )
+
+                HealthDataCard(
+                    title = "Heart rate",
+                    value = heartRateCount,
+                    unit = "bpm"
+                )
+
+                HealthDataCard(
+                    title = "Sleep",
+                    value = sleepTime,
+                    unit = ""
+                )
+            }
     }
 }
 
