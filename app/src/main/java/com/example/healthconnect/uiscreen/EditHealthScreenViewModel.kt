@@ -11,17 +11,20 @@ import java.time.LocalDate
 
 class EditHealthScreenViewModel(
     private val healthManager: HealthManager,
-    private val date: LocalDate
+    private val date: LocalDate,
+    initialSteps: String,
+    initialHeartRate: String,
+    initialSleep: String
 ) : ViewModel() {
 
 
-    var steps by mutableStateOf("")
+    var steps by mutableStateOf(initialSteps)
         private set
 
-    var heartRate by mutableStateOf("")
+    var heartRate by mutableStateOf(initialHeartRate)
         private set
 
-    var sleepHours by mutableStateOf("")
+    var sleepHours by mutableStateOf(initialSleep)
         private set
 
     fun onStepsChange(value: String) {

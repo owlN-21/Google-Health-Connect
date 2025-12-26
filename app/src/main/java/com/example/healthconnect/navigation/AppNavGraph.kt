@@ -49,9 +49,13 @@ fun AppNavGraph(
             val editViewModel = remember {
                 EditHealthScreenViewModel(
                     healthManager = healthManager,
-                    date = date
+                    date = date,
+                    initialSteps = healthViewModel.stepsText,
+                    initialHeartRate = healthViewModel.heartRateText,
+                    initialSleep = healthViewModel.sleepTimeText
                 )
             }
+
 
             EditHealthScreen(
                 steps = editViewModel .steps,
@@ -68,7 +72,10 @@ fun AppNavGraph(
 
                 },
                 onBackClick = {
-                    navController.navigateUp()
+                    navController.popBackStack(
+                        route = "health",
+                        inclusive = false
+                    )
                 }
             )
         }
