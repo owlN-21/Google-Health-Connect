@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.health.connect.client.HealthConnectClient
@@ -26,6 +27,7 @@ import java.time.Duration
 import java.time.Instant
 
 import com.example.healthconnect.uiscreen.HealthScreen
+import com.example.healthconnect.uiscreen.HealthScreenViewModel
 import java.time.LocalDate
 import java.time.ZoneId
 
@@ -49,14 +51,6 @@ class MainActivity : ComponentActivity() {
 
     private lateinit var healthManager: HealthManager
 
-    // ui state
-    private var stepsText by mutableStateOf("—")
-    private var heartRateText by mutableStateOf("—")
-    private var sleepTimeText by mutableStateOf("—")
-    private var errorText by mutableStateOf<String?>(null)
-
-    private var selectedDate by mutableStateOf(LocalDate.now())
-
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
@@ -71,25 +65,21 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             HealthConnectTheme {
+
+                // создаём ViewModel
+                val viewModel = remember {
+                    HealthScreenViewModel(healthManager)
+                }
+
                 Scaffold(modifier = Modifier.fillMaxSize()) { padding ->
                     HealthScreen(
-                        steps = stepsText,
-                        heartRateCount = heartRateText,
-                        sleepTime = sleepTimeText,
-                        error = errorText,
-                        selectedDate = selectedDate,
-                        onPrevDay = {
-                            selectedDate = selectedDate.minusDays(1)
-                            lifecycleScope.launch {
-                                loadDataForDate(selectedDate)
-                            }
-                        },
-                        onNextDay = {
-                            selectedDate = selectedDate.plusDays(1)
-                            lifecycleScope.launch {
-                                loadDataForDate(selectedDate)
-                            }
-                        },
+                        steps = viewModel.stepsText,
+                        heartRateCount = viewModel.heartRateText,
+                        sleepTime = viewModel.sleepTimeText,
+                        error = viewModel.errorText,
+                        selectedDate = viewModel.selectedDate,
+                        onPrevDay = viewModel::prevDay,
+                        onNextDay = viewModel::nextDay,
                         modifier = Modifier.padding(padding)
                     )
                 }
@@ -103,66 +93,12 @@ class MainActivity : ComponentActivity() {
             if (!grantedPermissions.containsAll(HEALTH_CONNECT_PERMISSIONS)) {
                 requestPermissionsLauncher.launch(HEALTH_CONNECT_PERMISSIONS)
             } else {
-                try {
-                    healthManager.insertSteps()
-                    healthManager.insertHeartRate()
-                    healthManager.insertSleepSession()
-
-                    loadDataForDate(selectedDate)
-                } catch (e: Exception) {
-                    errorText = "Не удалось загрузить данные"
-                }
+                healthManager.insertSteps()
+                healthManager.insertHeartRate()
+                healthManager.insertSleepSession()
             }
         }
     }
-
-    private suspend fun loadDataForDate(date: LocalDate) {
-        val (start, end) = dayToRange(date)
-
-        val steps = healthManager.aggregateSteps(start, end)
-        val hr = healthManager.readHeartRate(start, end)
-        val sleep = healthManager.readSleepSessions(start, end)
-
-        stepsText = steps?.toString() ?: "0"
-        heartRateText =
-            calculateAverageHeartRate(hr)?.toString() ?: "—"
-
-        val lastSleep = sleep.maxByOrNull { it.endTime }
-        sleepTimeText =
-            lastSleep?.let { formatSleepPeriod(it) } ?: "—"
-    }
-
-    private fun calculateAverageHeartRate(
-        records: List<HeartRateRecord>
-    ): Int? {
-        val values = records.flatMap { record ->
-            record.samples.map { it.beatsPerMinute.toInt() }
-        }
-
-        return if (values.isNotEmpty()) {
-            values.sum() / values.size
-        } else null
-    }
-
-    private fun dayToRange(date: LocalDate): Pair<Instant, Instant> {
-        val zone = ZoneId.systemDefault()
-        val start = date.atStartOfDay(zone).toInstant()
-        val end = date.plusDays(1).atStartOfDay(zone).toInstant()
-        return start to end
-    }
-
-    private fun formatSleepPeriod(session: SleepSessionRecord): String {
-        val duration = Duration.between(
-            session.startTime,
-            session.endTime
-        )
-
-        val hours = duration.toHours()
-        val minutes = duration.minusHours(hours).toMinutes()
-
-        return "${hours} ч ${minutes} мин"
-    }
-
     private fun getHealthConnectClient(): HealthConnectClient? {
         val availabilityStatus =
             HealthConnectClient.getSdkStatus(
