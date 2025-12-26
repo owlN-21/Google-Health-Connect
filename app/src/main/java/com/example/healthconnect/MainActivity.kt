@@ -21,6 +21,7 @@ import androidx.health.connect.client.HealthConnectFeatures
 import androidx.health.connect.client.PermissionController
 import androidx.health.connect.client.permission.HealthPermission
 import androidx.health.connect.client.records.HeartRateRecord
+import androidx.health.connect.client.records.SleepSessionRecord
 import androidx.health.connect.client.records.StepsRecord
 import androidx.lifecycle.lifecycleScope
 import com.example.healthconnect.ui.theme.HealthConnectTheme
@@ -39,6 +40,8 @@ private val HEALTH_CONNECT_PERMISSIONS = setOf(
     HealthPermission.getWritePermission(HeartRateRecord::class),
     HealthPermission.getReadPermission(StepsRecord::class),
     HealthPermission.getWritePermission(StepsRecord::class),
+    HealthPermission.getReadPermission(SleepSessionRecord::class),
+    HealthPermission.getWritePermission(SleepSessionRecord::class),
 )
 
 class MainActivity : ComponentActivity() {
@@ -74,7 +77,7 @@ class MainActivity : ComponentActivity() {
         var stepsText by mutableStateOf("—")
         var heartRateText by mutableStateOf("—")
         var errorText by mutableStateOf<String?>(null)
-
+        var sleepTimeText by mutableStateOf("—")
 
 
         // permissions + data load
@@ -91,19 +94,35 @@ class MainActivity : ComponentActivity() {
 
                     healthManager.insertHeartRate()
 
+                    healthManager.insertSleepSession()
+
                     val end = Instant.now()
-                    val start = end.minus(Duration.ofHours(1))
+                    val start = end.minus(Duration.ofDays(1))
 
                     val steps = healthManager.aggregateSteps(start, end)
                     val hr = healthManager.readHeartRate(start, end)
 
+
+                    val sleepTime = healthManager.readSleepSessions(start, end)
+
+                    val lastSleep  = sleepTime.maxByOrNull { it.endTime }
+
+                    sleepTimeText =
+                        if (sleepTime.isNotEmpty()) {
+                            formatSleepPeriod(lastSleep!!)
+                        } else {
+                            "—"
+                        }
+
+
                     stepsText = steps?.toString() ?: "0"
 
-                    // среднее сердцебьение за период
+                    // среднее сердцебиение за период
                     val averageHeartRate = calculateAverageHeartRate(hr)
 
                     heartRateText =
                         averageHeartRate?.toString()?: "—"
+
 
                 } catch (e: Exception) {
                     errorText = "Не удалось загрузить данные"
@@ -117,6 +136,7 @@ class MainActivity : ComponentActivity() {
                         HealthScreen(
                             steps = stepsText,
                             heartRateCount = heartRateText,
+                            sleepTime = sleepTimeText,
                             error = errorText,
                             modifier = Modifier.padding(padding)
                         )
@@ -133,9 +153,6 @@ class MainActivity : ComponentActivity() {
             ) == HealthConnectFeatures.FEATURE_STATUS_AVAILABLE
 
     }
-
-
-
 
     private fun calculateAverageHeartRate(
         records: List<HeartRateRecord>
@@ -155,9 +172,6 @@ class MainActivity : ComponentActivity() {
             null
         }
     }
-
-
-
 
     /**
      * Проверяет доступность Health Connect и
@@ -190,6 +204,20 @@ class MainActivity : ComponentActivity() {
 
         return HealthConnectClient.getOrCreate(this)
     }
+
+    // период сна
+    fun formatSleepPeriod(session: SleepSessionRecord): String {
+        val start = session.startTime
+        val end = session.endTime
+
+        val duration = Duration.between(start, end)
+
+        val hours = duration.toHours()
+        val minutes = duration.minusHours(hours).toMinutes()
+
+        return "${hours} ч ${minutes} мин"
+    }
+
 
 }
 

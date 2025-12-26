@@ -2,6 +2,7 @@ package com.example.healthconnect
 
 import androidx.health.connect.client.HealthConnectClient
 import androidx.health.connect.client.records.HeartRateRecord
+import androidx.health.connect.client.records.SleepSessionRecord
 import androidx.health.connect.client.records.StepsRecord
 import androidx.health.connect.client.records.metadata.Device
 import java.time.Instant
@@ -9,9 +10,11 @@ import java.time.Duration
 import java.time.ZoneOffset
 
 import androidx.health.connect.client.records.metadata.Metadata
+import androidx.health.connect.client.records.metadata.Metadata.Companion.manualEntry
 import androidx.health.connect.client.request.AggregateRequest
 import androidx.health.connect.client.request.ReadRecordsRequest
 import androidx.health.connect.client.time.TimeRangeFilter
+
 
 class HealthManager(
     private val client: HealthConnectClient
@@ -51,6 +54,21 @@ class HealthManager(
             metadata = Metadata.autoRecorded(
                 device = Device(type = Device.TYPE_WATCH)
             )
+        )
+
+        client.insertRecords(listOf(record))
+    }
+
+    suspend fun insertSleepSession() {
+        val now = Instant.now()
+
+        val record = SleepSessionRecord(
+            startTime = now.minusSeconds(8 * 60 * 60),
+            endTime = now,
+            startZoneOffset = ZoneOffset.UTC,
+            endZoneOffset = ZoneOffset.UTC,
+            metadata = Metadata.manualEntry() // введены пользователем вручную
+
         )
 
         client.insertRecords(listOf(record))
@@ -101,6 +119,22 @@ class HealthManager(
         )
         return response.records
     }
+
+    suspend fun readSleepSessions(
+        startTime: Instant,
+        endTime: Instant
+    ): List<SleepSessionRecord> {
+
+        val response = client.readRecords(
+            ReadRecordsRequest(
+                SleepSessionRecord::class,
+                timeRangeFilter = TimeRangeFilter.between(startTime, endTime)
+            )
+        )
+
+        return response.records
+    }
+
 
 
 }

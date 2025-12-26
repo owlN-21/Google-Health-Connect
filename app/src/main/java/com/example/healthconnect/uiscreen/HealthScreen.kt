@@ -13,6 +13,7 @@ import androidx.compose.ui.unit.dp
 fun HealthScreen(
     steps: String,
     heartRateCount: String,
+    sleepTime: String,
     error: String?,
     modifier: Modifier = Modifier
 ) {
@@ -38,7 +39,12 @@ fun HealthScreen(
         )
 
         Text(
-            text = "Heart rate records: $heartRateCount",
+            text = "Average heart rate: $heartRateCount",
+            style = MaterialTheme.typography.bodyLarge
+        )
+
+        Text(
+            text = "Sleep time: $sleepTime",
             style = MaterialTheme.typography.bodyLarge
         )
     }
