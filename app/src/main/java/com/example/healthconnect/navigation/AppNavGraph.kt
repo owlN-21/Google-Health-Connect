@@ -10,54 +10,65 @@ import com.example.healthconnect.uiscreen.EditHealthScreen
 import com.example.healthconnect.uiscreen.EditHealthScreenViewModel
 import com.example.healthconnect.uiscreen.HealthScreen
 import com.example.healthconnect.uiscreen.HealthScreenViewModel
+import java.time.LocalDate
 
 @Composable
 fun AppNavGraph(
     navController: NavHostController,
     healthManager: HealthManager
 ) {
+    val healthViewModel  = remember {
+        HealthScreenViewModel(healthManager)
+    }
+
     NavHost(
         navController = navController,
         startDestination = "health"
     ) {
-
         composable("health") {
-            val viewModel = remember {
-                HealthScreenViewModel(healthManager)
-            }
-
             HealthScreen(
-                steps = viewModel.stepsText,
-                heartRateCount = viewModel.heartRateText,
-                sleepTime = viewModel.sleepTimeText,
-                error = viewModel.errorText,
-                selectedDate = viewModel.selectedDate,
-                onPrevDay = viewModel::prevDay,
-                onNextDay = viewModel::nextDay,
+                steps = healthViewModel .stepsText,
+                heartRateCount = healthViewModel .heartRateText,
+                sleepTime = healthViewModel .sleepTimeText,
+                error = healthViewModel .errorText,
+                selectedDate = healthViewModel .selectedDate,
+                onPrevDay = healthViewModel ::prevDay,
+                onNextDay = healthViewModel ::nextDay,
                 onEditClick = {
-                    navController.navigate("edit")
+                    navController.navigate("edit/${healthViewModel.selectedDate}")
+                },
+                onRefresh = {
+                    healthViewModel .loadDataForSelectedDate()
                 }
             )
         }
 
-        composable("edit") {
-            val viewModel = remember {
-                EditHealthScreenViewModel(healthManager)
+        composable("edit/{date}") { backStackEntry ->
+            val date = LocalDate.parse(backStackEntry.arguments?.getString("date")!!)
+
+            val editViewModel = remember {
+                EditHealthScreenViewModel(
+                    healthManager = healthManager,
+                    date = date
+                )
             }
 
             EditHealthScreen(
-                steps = viewModel.steps,
-                heartRate = viewModel.heartRate,
-                sleepHours = viewModel.sleepHours,
-                onStepsChange = viewModel::onStepsChange,
-                onHeartRateChange = viewModel::onHeartRateChange,
-                onSleepChange = viewModel::onSleepChange,
+                steps = editViewModel .steps,
+                heartRate = editViewModel .heartRate,
+                sleepHours = editViewModel .sleepHours,
+                onStepsChange = editViewModel ::onStepsChange,
+                onHeartRateChange = editViewModel ::onHeartRateChange,
+                onSleepChange = editViewModel ::onSleepChange,
                 onSaveClick = {
-                    viewModel.save()
-                    navController.popBackStack()
+                    editViewModel.save {
+                        healthViewModel.loadDataForSelectedDate()
+                        navController.navigateUp()
+                    }
+
                 },
                 onBackClick = {
-                    navController.popBackStack()
+                    navController.navigateUp()
                 }
             )
         }

@@ -105,9 +105,9 @@ class MainActivity : ComponentActivity() {
             if (!grantedPermissions.containsAll(HEALTH_CONNECT_PERMISSIONS)) {
                 requestPermissionsLauncher.launch(HEALTH_CONNECT_PERMISSIONS)
             } else {
-                healthManager.insertSteps()
-                healthManager.insertHeartRate()
-                healthManager.insertSleepSession()
+//                healthManager.insertSteps()
+//                healthManager.insertHeartRate()
+//                healthManager.insertSleepSession()
             }
         }
     }

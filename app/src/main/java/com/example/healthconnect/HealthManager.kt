@@ -14,6 +14,8 @@ import androidx.health.connect.client.records.metadata.Metadata.Companion.manual
 import androidx.health.connect.client.request.AggregateRequest
 import androidx.health.connect.client.request.ReadRecordsRequest
 import androidx.health.connect.client.time.TimeRangeFilter
+import java.time.LocalDate
+import java.time.ZoneId
 
 
 class HealthManager(
@@ -36,6 +38,28 @@ class HealthManager(
 
         client.insertRecords(listOf(stepsRecord))
     }
+
+    suspend fun insertStepsForDate(
+        count: Long,
+        date: LocalDate
+    ) {
+        val zone = ZoneId.systemDefault()
+        val startTime = date.atStartOfDay(zone).toInstant()
+        val endTime = startTime.plus(Duration.ofMinutes(30))
+
+
+        val record = StepsRecord(
+            count = count,
+            startTime = startTime,
+            endTime = endTime,
+            startZoneOffset = ZoneOffset.UTC,
+            endZoneOffset = ZoneOffset.UTC,
+            metadata = Metadata.manualEntry()
+        )
+
+        client.insertRecords(listOf(record))
+    }
+
 
     suspend fun insertHeartRate() {
         val now = Instant.now()
