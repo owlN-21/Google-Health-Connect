@@ -54,6 +54,12 @@ class EditHealthScreenViewModel(
         }
     }
 
+    fun deleteSteps(onFinished: () -> Unit) {
+        viewModelScope.launch {
+            healthManager.deleteStepsForDate(date)
+            onFinished()
+        }
+    }
 
 
 }

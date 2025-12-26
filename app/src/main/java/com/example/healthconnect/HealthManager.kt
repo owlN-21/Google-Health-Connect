@@ -160,5 +160,16 @@ class HealthManager(
     }
 
 
+    suspend fun deleteStepsForDate(date: LocalDate) {
+        val zone = ZoneId.systemDefault()
+        val start = date.atStartOfDay(zone).toInstant()
+        val end = date.plusDays(1).atStartOfDay(zone).toInstant()
+
+        client.deleteRecords(
+            StepsRecord::class,
+            TimeRangeFilter.between(start, end)
+        )
+    }
+
 
 }

@@ -71,6 +71,12 @@ fun AppNavGraph(
                     }
 
                 },
+                onDeleteClick = {
+                    editViewModel.deleteSteps {
+                        healthViewModel.loadDataForSelectedDate()
+                        navController.navigateUp()
+                    }
+                },
                 onBackClick = {
                     navController.popBackStack(
                         route = "health",
