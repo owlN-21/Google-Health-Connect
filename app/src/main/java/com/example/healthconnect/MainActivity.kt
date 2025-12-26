@@ -9,15 +9,11 @@ import androidx.activity.result.ActivityResultLauncher
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.health.connect.client.HealthConnectClient
-import androidx.health.connect.client.HealthConnectFeatures
 import androidx.health.connect.client.PermissionController
 import androidx.health.connect.client.permission.HealthPermission
 import androidx.health.connect.client.records.HeartRateRecord
@@ -30,6 +26,8 @@ import java.time.Duration
 import java.time.Instant
 
 import com.example.healthconnect.uiscreen.HealthScreen
+import java.time.LocalDate
+import java.time.ZoneId
 
 
 private const val HEALTH_CONNECT_PACKAGE =
@@ -46,171 +44,118 @@ private val HEALTH_CONNECT_PERMISSIONS = setOf(
 
 class MainActivity : ComponentActivity() {
 
-
     private lateinit var requestPermissionsLauncher:
             ActivityResultLauncher<Set<String>>
 
+    private lateinit var healthManager: HealthManager
 
+    // ui state
+    private var stepsText by mutableStateOf("—")
+    private var heartRateText by mutableStateOf("—")
+    private var sleepTimeText by mutableStateOf("—")
+    private var errorText by mutableStateOf<String?>(null)
+
+    private var selectedDate by mutableStateOf(LocalDate.now())
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-
-        // Launcher для запроса permissions
         requestPermissionsLauncher =
             registerForActivityResult(
                 PermissionController.createRequestPermissionResultContract()
-            ) { granted ->
-                if (granted.containsAll(HEALTH_CONNECT_PERMISSIONS)) {
-                    // Permissions successfully granted
-                } else {
-                    // Lack of required permissions
+            ) { }
+
+        val healthConnectClient = getHealthConnectClient() ?: return
+        healthManager = HealthManager(healthConnectClient)
+
+
+        setContent {
+            HealthConnectTheme {
+                Scaffold(modifier = Modifier.fillMaxSize()) { padding ->
+                    HealthScreen(
+                        steps = stepsText,
+                        heartRateCount = heartRateText,
+                        sleepTime = sleepTimeText,
+                        error = errorText,
+                        selectedDate = selectedDate,
+                        onPrevDay = {
+                            selectedDate = selectedDate.minusDays(1)
+                            lifecycleScope.launch {
+                                loadDataForDate(selectedDate)
+                            }
+                        },
+                        onNextDay = {
+                            selectedDate = selectedDate.plusDays(1)
+                            lifecycleScope.launch {
+                                loadDataForDate(selectedDate)
+                            }
+                        },
+                        modifier = Modifier.padding(padding)
+                    )
                 }
             }
+        }
 
-        // Получаем HealthConnectClient
-        val healthConnectClient = getHealthConnectClient() ?: return
-
-        val healthManager = HealthManager(healthConnectClient)
-
-        // ui state
-        var stepsText by mutableStateOf("—")
-        var heartRateText by mutableStateOf("—")
-        var errorText by mutableStateOf<String?>(null)
-        var sleepTimeText by mutableStateOf("—")
-
-
-        // permissions + data load
         lifecycleScope.launch {
             val grantedPermissions =
                 healthConnectClient.permissionController.getGrantedPermissions()
 
             if (!grantedPermissions.containsAll(HEALTH_CONNECT_PERMISSIONS)) {
-                // Запрашиваем permissions
                 requestPermissionsLauncher.launch(HEALTH_CONNECT_PERMISSIONS)
-            }else{
+            } else {
                 try {
                     healthManager.insertSteps()
-
                     healthManager.insertHeartRate()
-
                     healthManager.insertSleepSession()
 
-                    val end = Instant.now()
-                    val start = end.minus(Duration.ofDays(1))
-
-                    val steps = healthManager.aggregateSteps(start, end)
-                    val hr = healthManager.readHeartRate(start, end)
-
-
-                    val sleepTime = healthManager.readSleepSessions(start, end)
-
-                    val lastSleep  = sleepTime.maxByOrNull { it.endTime }
-
-                    sleepTimeText =
-                        if (sleepTime.isNotEmpty()) {
-                            formatSleepPeriod(lastSleep!!)
-                        } else {
-                            "—"
-                        }
-
-
-                    stepsText = steps?.toString() ?: "0"
-
-                    // среднее сердцебиение за период
-                    val averageHeartRate = calculateAverageHeartRate(hr)
-
-                    heartRateText =
-                        averageHeartRate?.toString()?: "—"
-
-
+                    loadDataForDate(selectedDate)
                 } catch (e: Exception) {
                     errorText = "Не удалось загрузить данные"
                 }
             }
-
-            // Compose
-            setContent {
-                HealthConnectTheme {
-                    Scaffold(modifier = Modifier.fillMaxSize()) { padding ->
-                        HealthScreen(
-                            steps = stepsText,
-                            heartRateCount = heartRateText,
-                            sleepTime = sleepTimeText,
-                            error = errorText,
-                            modifier = Modifier.padding(padding)
-                        )
-                    }
-                }
-            }
         }
+    }
 
+    private suspend fun loadDataForDate(date: LocalDate) {
+        val (start, end) = dayToRange(date)
 
-        // Проверяем доступность фичи background read
-        val isBackgroundReadAvailable =
-            healthConnectClient.features.getFeatureStatus(
-                HealthConnectFeatures.FEATURE_READ_HEALTH_DATA_IN_BACKGROUND
-            ) == HealthConnectFeatures.FEATURE_STATUS_AVAILABLE
+        val steps = healthManager.aggregateSteps(start, end)
+        val hr = healthManager.readHeartRate(start, end)
+        val sleep = healthManager.readSleepSessions(start, end)
 
+        stepsText = steps?.toString() ?: "0"
+        heartRateText =
+            calculateAverageHeartRate(hr)?.toString() ?: "—"
+
+        val lastSleep = sleep.maxByOrNull { it.endTime }
+        sleepTimeText =
+            lastSleep?.let { formatSleepPeriod(it) } ?: "—"
     }
 
     private fun calculateAverageHeartRate(
         records: List<HeartRateRecord>
     ): Int? {
-
-        val heartRates = mutableListOf<Int>()
-
-        for (record in records) {
-            for (sample in record.samples) {
-                heartRates.add(sample.beatsPerMinute.toInt())
-            }
+        val values = records.flatMap { record ->
+            record.samples.map { it.beatsPerMinute.toInt() }
         }
 
-        return if (heartRates.isNotEmpty()) {
-            heartRates.sum() / heartRates.size
-        } else {
-            null
-        }
+        return if (values.isNotEmpty()) {
+            values.sum() / values.size
+        } else null
     }
 
-    /**
-     * Проверяет доступность Health Connect и
-     * возвращает HealthConnectClient или null
-     */
-    private fun getHealthConnectClient(): HealthConnectClient? {
-        val availabilityStatus =
-            HealthConnectClient.getSdkStatus(this, HEALTH_CONNECT_PACKAGE)
-
-        if (availabilityStatus == HealthConnectClient.SDK_UNAVAILABLE) {
-            return null
-        }
-
-        if (availabilityStatus ==
-            HealthConnectClient.SDK_UNAVAILABLE_PROVIDER_UPDATE_REQUIRED
-        ) {
-            val uriString =
-                "market://details?id=$HEALTH_CONNECT_PACKAGE&url=healthconnect%3A%2F%2Fonboarding"
-
-            startActivity(
-                Intent(Intent.ACTION_VIEW).apply {
-                    setPackage("com.android.vending")
-                    data = Uri.parse(uriString)
-                    putExtra("overlay", true)
-                    putExtra("callerId", packageName)
-                }
-            )
-            return null
-        }
-
-        return HealthConnectClient.getOrCreate(this)
+    private fun dayToRange(date: LocalDate): Pair<Instant, Instant> {
+        val zone = ZoneId.systemDefault()
+        val start = date.atStartOfDay(zone).toInstant()
+        val end = date.plusDays(1).atStartOfDay(zone).toInstant()
+        return start to end
     }
 
-    // период сна
-    fun formatSleepPeriod(session: SleepSessionRecord): String {
-        val start = session.startTime
-        val end = session.endTime
-
-        val duration = Duration.between(start, end)
+    private fun formatSleepPeriod(session: SleepSessionRecord): String {
+        val duration = Duration.between(
+            session.startTime,
+            session.endTime
+        )
 
         val hours = duration.toHours()
         val minutes = duration.minusHours(hours).toMinutes()
@@ -218,21 +163,35 @@ class MainActivity : ComponentActivity() {
         return "${hours} ч ${minutes} мин"
     }
 
+    private fun getHealthConnectClient(): HealthConnectClient? {
+        val availabilityStatus =
+            HealthConnectClient.getSdkStatus(
+                this,
+                HEALTH_CONNECT_PACKAGE
+            )
 
-}
+        return when (availabilityStatus) {
+            HealthConnectClient.SDK_UNAVAILABLE -> {
+                null
+            }
 
-@Composable
-fun Greeting(name: String, modifier: Modifier = Modifier) {
-    Text(
-        text = "Hello $name!",
-        modifier = modifier
-    )
-}
+            HealthConnectClient.SDK_UNAVAILABLE_PROVIDER_UPDATE_REQUIRED -> {
+                val uriString =
+                    "market://details?id=$HEALTH_CONNECT_PACKAGE&url=healthconnect%3A%2F%2Fonboarding"
 
-@Preview(showBackground = true)
-@Composable
-fun GreetingPreview() {
-    HealthConnectTheme {
-        Greeting("Android")
+                startActivity(
+                    Intent(Intent.ACTION_VIEW).apply {
+                        setPackage("com.android.vending")
+                        data = Uri.parse(uriString)
+                        putExtra("overlay", true)
+                        putExtra("callerId", packageName)
+                    }
+                )
+                null
+            }
+
+            else -> HealthConnectClient.getOrCreate(this)
+        }
     }
+
 }
