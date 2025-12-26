@@ -43,7 +43,7 @@ class HealthManager(
             samples = listOf(
                 HeartRateRecord.Sample(
                     time = now.minusSeconds(30),
-                    beatsPerMinute = 72
+                    beatsPerMinute = 78
                 )
             ),
             startZoneOffset = ZoneOffset.UTC,

@@ -3,10 +3,8 @@ package com.example.healthconnect
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
-import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.ActivityResultLauncher
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -24,18 +22,12 @@ import androidx.health.connect.client.PermissionController
 import androidx.health.connect.client.permission.HealthPermission
 import androidx.health.connect.client.records.HeartRateRecord
 import androidx.health.connect.client.records.StepsRecord
-import androidx.health.connect.client.records.metadata.Device
 import androidx.lifecycle.lifecycleScope
 import com.example.healthconnect.ui.theme.HealthConnectTheme
 import kotlinx.coroutines.launch
 import java.time.Duration
 import java.time.Instant
-import java.time.ZoneOffset
 
-import androidx.health.connect.client.records.metadata.Metadata
-import androidx.health.connect.client.request.AggregateRequest
-import androidx.health.connect.client.request.ReadRecordsRequest
-import androidx.health.connect.client.time.TimeRangeFilter
 import com.example.healthconnect.uiscreen.HealthScreen
 
 
@@ -106,7 +98,12 @@ class MainActivity : ComponentActivity() {
                     val hr = healthManager.readHeartRate(start, end)
 
                     stepsText = steps?.toString() ?: "0"
-                    heartRateText = hr.size.toString()
+
+                    // среднее сердцебьение за период
+                    val averageHeartRate = calculateAverageHeartRate(hr)
+
+                    heartRateText =
+                        averageHeartRate?.toString()?: "—"
 
                 } catch (e: Exception) {
                     errorText = "Не удалось загрузить данные"
@@ -135,6 +132,28 @@ class MainActivity : ComponentActivity() {
                 HealthConnectFeatures.FEATURE_READ_HEALTH_DATA_IN_BACKGROUND
             ) == HealthConnectFeatures.FEATURE_STATUS_AVAILABLE
 
+    }
+
+
+
+
+    private fun calculateAverageHeartRate(
+        records: List<HeartRateRecord>
+    ): Int? {
+
+        val heartRates = mutableListOf<Int>()
+
+        for (record in records) {
+            for (sample in record.samples) {
+                heartRates.add(sample.beatsPerMinute.toInt())
+            }
+        }
+
+        return if (heartRates.isNotEmpty()) {
+            heartRates.sum() / heartRates.size
+        } else {
+            null
+        }
     }
 
 
