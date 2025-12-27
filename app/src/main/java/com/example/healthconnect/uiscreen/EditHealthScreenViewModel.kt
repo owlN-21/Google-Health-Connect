@@ -42,6 +42,8 @@ class EditHealthScreenViewModel(
     fun save(onFinished: () -> Unit) {
         viewModelScope.launch {
             val stepsValue = steps.toLongOrNull()
+            val heartValue = heartRate.toLongOrNull()
+            val sleepValue = sleepHours.toLongOrNull()
 
             if (stepsValue != null) {
                 healthManager.insertStepsForDate(
@@ -50,6 +52,21 @@ class EditHealthScreenViewModel(
                 )
             }
 
+            if (heartValue != null) {
+                healthManager.insertHeartRateForDate(
+                    heartValue,
+                    date
+                )
+            }
+            if (sleepValue != null) {
+                healthManager.insertSleepSessionForDate(
+                    sleepValue,
+                    date
+                )
+            }
+
+
+
             onFinished()
         }
     }
@@ -57,6 +74,8 @@ class EditHealthScreenViewModel(
     fun deleteSteps(onFinished: () -> Unit) {
         viewModelScope.launch {
             healthManager.deleteStepsForDate(date)
+            healthManager.deleteHeartRateForDate(date)
+            healthManager.deleteSleepSessionsForDate(date)
             onFinished()
         }
     }

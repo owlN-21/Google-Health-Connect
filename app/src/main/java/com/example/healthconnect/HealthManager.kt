@@ -61,6 +61,33 @@ class HealthManager(
     }
 
 
+    suspend fun insertHeartRateForDate(
+        count: Long,
+        date: LocalDate)
+    {
+        val zone = ZoneId.systemDefault()
+        val startTime = date.atStartOfDay(zone).toInstant()
+        val endTime = startTime.plus(Duration.ofMinutes(30))
+
+        val record = HeartRateRecord(
+            startTime =startTime,
+            endTime = endTime,
+            samples = listOf(
+                HeartRateRecord.Sample(
+                    time = startTime.plusSeconds(10),
+                    beatsPerMinute = count
+                )
+            ),
+            startZoneOffset = ZoneOffset.UTC,
+            endZoneOffset = ZoneOffset.UTC,
+            metadata = Metadata.autoRecorded(
+                device = Device(type = Device.TYPE_WATCH)
+            )
+        )
+
+        client.insertRecords(listOf(record))
+    }
+
     suspend fun insertHeartRate() {
         val now = Instant.now()
 
@@ -83,6 +110,8 @@ class HealthManager(
         client.insertRecords(listOf(record))
     }
 
+
+
     suspend fun insertSleepSession() {
         val now = Instant.now()
 
@@ -97,6 +126,27 @@ class HealthManager(
 
         client.insertRecords(listOf(record))
     }
+
+    suspend fun insertSleepSessionForDate(
+        sleepHours: Long,
+        date: LocalDate
+    ) {
+        val zone = ZoneId.systemDefault()
+
+        val startTime = date.atStartOfDay(zone).toInstant()
+        val endTime = startTime.plus(Duration.ofHours(sleepHours))
+
+        val record = SleepSessionRecord(
+            startTime = startTime,
+            endTime = endTime,
+            startZoneOffset = ZoneOffset.UTC,
+            endZoneOffset = ZoneOffset.UTC,
+            metadata = Metadata.manualEntry()
+        )
+
+        client.insertRecords(listOf(record))
+    }
+
 
 
     /**
@@ -167,6 +217,28 @@ class HealthManager(
 
         client.deleteRecords(
             StepsRecord::class,
+            TimeRangeFilter.between(start, end)
+        )
+    }
+
+    suspend fun deleteHeartRateForDate(date: LocalDate) {
+        val zone = ZoneId.systemDefault()
+        val start = date.atStartOfDay(zone).toInstant()
+        val end = date.plusDays(1).atStartOfDay(zone).toInstant()
+
+        client.deleteRecords(
+            HeartRateRecord::class,
+            TimeRangeFilter.between(start, end)
+        )
+    }
+
+    suspend fun deleteSleepSessionsForDate(date: LocalDate) {
+        val zone = ZoneId.systemDefault()
+        val start = date.atStartOfDay(zone).toInstant()
+        val end = date.plusDays(1).atStartOfDay(zone).toInstant()
+
+        client.deleteRecords(
+            SleepSessionRecord::class,
             TimeRangeFilter.between(start, end)
         )
     }

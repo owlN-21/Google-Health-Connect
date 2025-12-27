@@ -68,10 +68,6 @@ class MainActivity : ComponentActivity() {
         setContent {
             HealthConnectTheme {
 
-//                // создаём ViewModel
-//                val viewModel = remember {
-//                    HealthScreenViewModel(healthManager)
-//                }
 
                 val navController = rememberNavController()
 
@@ -80,21 +76,6 @@ class MainActivity : ComponentActivity() {
                     healthManager = healthManager
                 )
 
-//                Scaffold(modifier = Modifier.fillMaxSize()) { padding ->
-//                    HealthScreen(
-//                        steps = viewModel.stepsText,
-//                        heartRateCount = viewModel.heartRateText,
-//                        sleepTime = viewModel.sleepTimeText,
-//                        error = viewModel.errorText,
-//                        selectedDate = viewModel.selectedDate,
-//                        onPrevDay = viewModel::prevDay,
-//                        onNextDay = viewModel::nextDay,
-//                        onEditClick = {
-//                            navController.navigate("edit")
-//                        },
-//                        modifier = Modifier.padding(padding)
-//                    )
-//                }
             }
         }
 
